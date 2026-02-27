@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Black-Box Experiment Station</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bg: #f8fafc; --panel: #ffffff; --accent: #1e40af; --text: #0f172a; --danger: #ef4444; --v-trace: #00ff00; --i-trace: #00d4ff; --success: #059669; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .lab-bench { background: var(--panel); padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 1400px; width: 100%; border: 1px solid #e2e8f0; }
+        
+        .header-section { text-align: center; margin-bottom: 25px; border-bottom: 3px double #cbd5e1; padding-bottom: 15px; }
+        .header-section h1 { margin: 0; color: var(--accent); font-size: 1.8em; text-transform: uppercase; }
+        .faculty-info { margin-top: 8px; font-weight: 600; color: #475569; font-size: 1em; }
+
+        /* Main Navigation Tabs */
+        .main-nav { display: flex; gap: 10px; margin-bottom: 20px; background: #e2e8f0; padding: 5px; border-radius: 10px; width: fit-content; }
+        .nav-btn { padding: 10px 25px; border: none; background: none; cursor: pointer; font-weight: bold; border-radius: 8px; transition: 0.3s; }
+        .nav-btn.active { background: var(--panel); color: var(--accent); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        /* Component Selection Tabs */
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+        .tab-btn { padding: 12px 25px; border: none; background: #f1f5f9; cursor: pointer; font-weight: 600; color: #64748b; border-radius: 8px 8px 0 0; font-size: 1.1em; }
+        .tab-btn.active { background: var(--accent); color: white; }
+
+        .visual-grid { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .canvas-box { border: 2px solid #e2e8f0; border-radius: 12px; background: #fff; height: 320px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .oscilloscope-box { background: #020617 !important; }
+        .canvas-label { position: absolute; top: 10px; left: 12px; font-size: 10px; letter-spacing: 1px; font-weight: 800; color: #94a3b8; z-index: 10; text-transform: uppercase; }
+        
+        .control-panel { background: #f8fafc; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; margin-bottom: 25px; }
+        .metric { font-size: 1.1em; font-family: monospace; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        
+        .graph-area { background: #fff; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; height: 400px; margin-bottom: 25px; }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .info-card { background: #f1f5f9; padding: 20px; border-radius: 12px; font-size: 1em; border: 1px solid #e2e8f0; line-height: 1.6; }
+        .info-card h3 { margin-top: 0; color: var(--accent); border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 25px; background: white; }
+        th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: center; }
+        
+        .btn-group { display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-record { background: var(--success); color: white; width: 100%; margin-top: 15px; font-size: 1.1em; }
+        .btn-result { background: var(--accent); color: white; }
+        .btn-print { background: #7c3aed; color: white; }
+        .btn-export { background: #475569; color: white; }
+        .btn-reset { background: var(--danger); color: white; }
+
+        #resultDisplay { margin-top: 20px; padding: 20px; border-radius: 10px; background: #ecfdf5; border: 2px solid #10b981; display: none; color: #065f46; font-weight: bold; font-size: 1.1em; }
+
+        .cert-block { margin-top: 50px; padding: 30px; border: 2px solid #000; border-radius: 12px; display: none; }
+        .cert-header { text-align: center; font-weight: bold; font-size: 1.3em; text-decoration: underline; margin-bottom: 30px; }
+        .cert-row { display: flex; justify-content: space-between; margin-top: 60px; }
+        .sign-line { border-top: 1.5px solid black; width: 220px; text-align: center; padding-top: 10px; }
+
+        .instruction-content { display: none; padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 12px; }
+        .instruction-content h2 { color: var(--accent); margin-top: 25px; border-left: 5px solid var(--accent); padding-left: 10px; }
+        .instruction-content ul, .instruction-content ol { padding-left: 20px; }
+
+        @media print {
+            .tabs, .control-panel, .btn-group, .canvas-label, .main-nav, .no-print, input { display: none !important; }
+            .visual-grid { grid-template-columns: 1fr 1fr 1fr; }
+            .canvas-box { height: 250px !important; }
+            .cert-block { display: block !important; }
+            .instruction-content { display: none !important; }
+            #experimentView { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="lab-bench" id="printableArea">
+    <div class="header-section">
+        <h1>Black-Box Experiment (Identification of basic Electronic Components)</h1>
+        <div class="faculty-info">
+            Dr Shivkumar Math, Professor & HOD, Department of Physics<br>
+            Jain College of Engineering, Belagavi
+        </div>
+    </div>
+
+    <div class="main-nav no-print">
+        <button id="navExp" class="nav-btn active" onclick="switchView('experiment')">Experiment Station</button>
+        <button id="navInst" class="nav-btn" onclick="switchView('instructions')">Lab Instructions</button>
+    </div>
+
+    <div id="experimentView">
+        <div class="tabs no-print">
+            <button id="tabL" class="tab-btn active" onclick="setComp('L')">Box (L)</button>
+            <button id="tabC" class="tab-btn" onclick="setComp('C')">Box (C)</button>
+            <button id="tabR" class="tab-btn" onclick="setComp('R')">Box (R)</button>
+        </div>
+
+        <div class="visual-grid">
+            <div class="canvas-box">
+                <span class="canvas-label">Circuit Diagram</span>
+                <img src="blackbox circuit diagram.jpg" 
+                     alt="Circuit Diagram" style="width: 90%; height: auto; object-fit: contain;">
+            </div>
+            
+            <div class="canvas-box oscilloscope-box">
+                <span class="canvas-label" style="color: #64748b;">Oscilloscope Trace (V vs I)</span>
+                <canvas id="waveCanvas"></canvas>
+            </div>
+
+            <div class="canvas-box">
+                <span class="canvas-label">Phasor Diagram (R vs X)</span>
+                <canvas id="phasorCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="control-panel no-print">
+            <div class="readouts">
+                <div class="metric">Voltage (V): <span id="valV" style="color: var(--success)">5.0</span> V</div>
+                <div class="metric">Current (I): <span id="valI" style="color: var(--i-trace)">0.00</span> mA</div>
+                <div class="metric">Impedance (Z): <span id="valZ" style="color: var(--accent)">1000.0</span> Ω</div>
+            </div>
+            <div>
+                <label>AC Frequency (f): <strong><span id="lblF">2250</span> Hz</strong></label>
+                <input type="range" id="freq" min="100" max="5000" step="50" value="2250" style="width:100%; margin: 15px 0;">
+                <label>Source Amplitude (Vin): <strong><span id="lblV">5.0</span> V</strong></label>
+                <input type="range" id="volt" min="0.1" max="10.0" step="0.1" value="5.0" style="width:100%; margin: 15px 0;">
+                <button class="btn btn-record" onclick="recordLog()">Capture Data Point</button>
+            </div>
+        </div>
+
+        <div class="graph-area"><canvas id="zGraph"></canvas></div>
+
+        <div class="info-grid no-print">
+            <div class="info-card">
+                <h3>Theory Overview</h3>
+                Opposition to AC flow is Impedance (Z). Internal resistor R = 1000 Ω.
+                <br>
+                1. <strong>Inductor:</strong> XL = 2 * pi * f * L. Z increases with f. I lags V.
+                <br>
+                2. <strong>Capacitor:</strong> XC = 1 / (2 * pi * f * C). Z decreases with f. I leads V.
+            </div>
+            <div class="info-card">
+                <h3>Quick Procedure</h3>
+                1. Select Box. Adjust f and capture data points.<br>
+                2. Observe wave phase shift and phasor vector X.<br>
+                3. Click Show Result and Print Manual.
+            </div>
+        </div>
+
+        <table id="obsTable">
+            <thead>
+                <tr><th>Component ID</th><th>Frequency f (Hz)</th><th>Voltage V (V)</th><th>Current I (mA)</th><th>Impedance Z (Ω)</th></tr>
+            </thead>
+            <tbody id="logBody"></tbody>
+        </table>
+        
+        <div class="btn-group no-print">
+            <button class="btn btn-result" onclick="showResult()">Show Result</button>
+            <button class="btn btn-print" onclick="window.print()">Print Lab Manual (PDF)</button>
+            <button class="btn btn-export" onclick="exportExcel()">Export to Excel</button>
+            <button class="btn btn-reset" onclick="resetLogs()">Clear Data</button>
+        </div>
+        
+        <div id="resultDisplay"></div>
+    </div>
+
+    <div id="instructionView" class="instruction-content">
+        <h2>1. Objective</h2>
+        <p>To identify an unknown electronic component (L, C, or R) by studying the relationship between Frequency (f) and Impedance (Z).</p>
+
+        <h2>2. Formulae</h2>
+        <p>
+            - <b>Inductive Reactance:</b> XL = 2 * &pi; * f * L<br>
+            - <b>Capacitive Reactance:</b> XC = 1 / (2 * &pi; * f * C)<br>
+            - <b>Impedance:</b> Z = V / I = &radic;(R² + X²)
+        </p>
+
+        <h2>3. Step-by-Step Procedure</h2>
+        <ol>
+            <li>Select <b>Box (L)</b> from the component tabs.</li>
+            <li>Set <b>Vin</b> to a fixed value (e.g., 5.0 V).</li>
+            <li>Start <b>Frequency (f)</b> at 100 Hz. Click <b>Capture Data Point</b>.</li>
+            <li>Increase frequency in steps of 500 Hz up to 5000 Hz, capturing data at each step.</li>
+            <li>Watch the <b>Phasor Diagram</b>: for an Inductor, the vertical vector increases. For a Capacitor, it decreases.</li>
+            <li>Analyze the <b>Impedance Graph</b> for trends.</li>
+            <li>Click <b>Show Result</b> to confirm your identification.</li>
+            <li>Export data to Excel for your records.</li>
+        </ol>
+
+        <h2>4. Expected Trends</h2>
+        <ul>
+            <li><b>Inductor:</b> Impedance increases as frequency increases. Current wave lags voltage wave.</li>
+            <li><b>Capacitor:</b> Impedance decreases as frequency increases. Current wave leads voltage wave.</li>
+            <li><b>Resistor:</b> Impedance remains constant (~1000 Ω). Waves are in phase.</li>
+        </ul>
+    </div>
+
+    <div class="cert-block">
+        <div class="cert-header">CERTIFICATE OF EVALUATION</div>
+        <p>Name of Student: _____________________________________ USN: ___________________</p>
+        <p>Date of Experiment: ___________________ Section/Batch: ___________________</p>
+        <div class="cert-row">
+            <div class="sign-line">Student Signature</div>
+            <div class="sign-line">Internal Examiner</div>
+            <div class="sign-line">HOD / Professor</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const physics = { L: 0.1, C: 0.0000004, R_base: 1000 }; 
+    let activeComp = 'L';
+    let logs = [];
+    let time = 0;
+    let zChart;
+
+    const fIn = document.getElementById('freq');
+    const vIn = document.getElementById('volt');
+    const wCanvas = document.getElementById('waveCanvas');
+    const pCanvas = document.getElementById('phasorCanvas');
+
+    function switchView(view) {
+        document.getElementById('experimentView').style.display = (view === 'experiment') ? 'block' : 'none';
+        document.getElementById('instructionView').style.display = (view === 'instructions') ? 'block' : 'none';
+        document.getElementById('navExp').classList.toggle('active', view === 'experiment');
+        document.getElementById('navInst').classList.toggle('active', view === 'instructions');
+    }
+
+    function initGraph() {
+        const ctx = document.getElementById('zGraph').getContext('2d');
+        zChart = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets: [{ label: 'Impedance Z (Ω) vs Frequency f (Hz)', data: [], backgroundColor: '#1e40af', borderColor: '#1e40af', showLine: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'f (Hz)' } }, y: { title: { display: true, text: 'Z (Ω)' } } } }
+        });
+    }
+
+    function drawPhasor(R, X) {
+        const ctx = pCanvas.getContext('2d');
+        const centerX = 60, centerY = (X < 0) ? 60 : pCanvas.height - 60;
+        const scale = 0.15;
+        ctx.clearRect(0,0,pCanvas.width, pCanvas.height);
+        ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.5; ctx.beginPath();
+        ctx.moveTo(centerX, 0); ctx.lineTo(centerX, pCanvas.height);
+        ctx.moveTo(0, centerY); ctx.lineTo(pCanvas.width, centerY); ctx.stroke();
+        ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.lineTo(centerX + (R * scale), centerY); ctx.stroke();
+        ctx.strokeStyle = "#1e40af";
+        ctx.beginPath(); ctx.moveTo(centerX + (R * scale), centerY); 
+        ctx.lineTo(centerX + (R * scale), centerY - (X * scale)); ctx.stroke();
+        ctx.strokeStyle = "#059669"; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(centerX, centerY); 
+        ctx.lineTo(centerX + (R * scale), centerY - (X * scale)); ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    function animate() {
+        if(document.getElementById('experimentView').style.display === 'none') {
+             requestAnimationFrame(animate);
+             return;
+        }
+        const ctxW = wCanvas.getContext('2d');
+        ctxW.fillStyle = "rgba(2, 6, 23, 0.25)"; ctxW.fillRect(0, 0, wCanvas.width, wCanvas.height);
+        const f = parseFloat(fIn.value), V_p = parseFloat(vIn.value), omega = 2 * Math.PI * f;
+        let Z, phi, X = 0;
+        if(activeComp === 'L') { X = omega * physics.L; Z = Math.sqrt(physics.R_base**2 + X**2); phi = Math.atan(X / physics.R_base); }
+        else if(activeComp === 'C') { X = - (1 / (omega * physics.C)); Z = Math.sqrt(physics.R_base**2 + X**2); phi = Math.atan(X / physics.R_base); }
+        else { X = 0; Z = physics.R_base; phi = 0; }
+        const I_p = (V_p / Z) * 1000;
+        document.getElementById('lblF').innerText = f; 
+        document.getElementById('lblV').innerText = V_p.toFixed(1);
+        document.getElementById('valV').innerText = V_p.toFixed(1);
+        document.getElementById('valI').innerText = I_p.toFixed(2);
+        document.getElementById('valZ').innerText = Z.toFixed(1);
+        ctxW.lineWidth = 2.5;
+        ctxW.beginPath(); ctxW.strokeStyle = "#00ff00";
+        for(let x=0; x<wCanvas.width; x++) {
+            const y = (wCanvas.height/2) - Math.sin(omega * (time + x*0.000005)) * (V_p * 10);
+            x === 0 ? ctxW.moveTo(x,y) : ctxW.lineTo(x,y);
+        } ctxW.stroke();
+        ctxW.beginPath(); ctxW.strokeStyle = "#00d4ff";
+        for(let x=0; x<wCanvas.width; x++) {
+            const y = (wCanvas.height/2) - Math.sin(omega * (time + x*0.000005) - phi) * (I_p * 15);
+            x === 0 ? ctxW.moveTo(x,y) : ctxW.lineTo(x,y);
+        } ctxW.stroke();
+        drawPhasor(physics.R_base, X);
+        time += 0.00012; requestAnimationFrame(animate);
+    }
+
+    function setComp(c) { 
+        activeComp = c; 
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('tab' + c).classList.add('active');
+        resetLogs(); 
+    }
+    
+    function recordLog() {
+        const f = parseFloat(fIn.value), z = parseFloat(document.getElementById('valZ').innerText);
+        const v = parseFloat(vIn.value);
+        logs.push({ c: activeComp, f, v, i: document.getElementById('valI').innerText, z });
+        document.getElementById('logBody').innerHTML = logs.map(d => `<tr><td>Box (${d.c})</td><td>${d.f}</td><td>${d.v}</td><td>${d.i}</td><td>${d.z}</td></tr>`).join('');
+        zChart.data.datasets[0].data.push({x: f, y: z}); zChart.data.datasets[0].data.sort((a,b)=>a.x-b.x); zChart.update();
+    }
+    
+    function showResult() {
+        if(logs.length < 2) return alert("Insufficient data recorded.");
+        const first = logs[0], last = logs[logs.length-1], res = document.getElementById('resultDisplay');
+        res.style.display = "block";
+        if(last.z > first.z + 10) res.innerHTML = "RESULT: Z increases with f. Identification: INDUCTOR (L).";
+        else if(last.z < first.z - 10) res.innerHTML = "RESULT: Z decreases with f. Identification: CAPACITOR (C).";
+        else res.innerHTML = "RESULT: Z remains constant (~1000 Ω). Identification: RESISTOR (R).";
+    }
+    
+    function exportExcel() {
+        let csv = "Component,f(Hz),V(V),I(mA),Z(Ohm)\n" + logs.map(d => `${d.c},${d.f},${d.v},${d.i},${d.z}`).join("\n");
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'LabData.csv'; a.click();
+    }
+    
+    function resetLogs() { logs = []; document.getElementById('logBody').innerHTML = ""; zChart.data.datasets[0].data = []; zChart.update(); document.getElementById('resultDisplay').style.display="none"; }
+    
+    window.onload = () => { 
+        wCanvas.width = wCanvas.offsetWidth; wCanvas.height = wCanvas.offsetHeight; 
+        pCanvas.width = pCanvas.offsetWidth; pCanvas.height = pCanvas.offsetHeight; 
+        initGraph(); animate(); 
+    };
+</script>
+</body>
+</html>
